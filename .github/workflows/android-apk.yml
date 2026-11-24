@@ -1,0 +1,51 @@
+name: Build offline APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - name: Include exact original game
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp index.html android/app/src/main/assets/index.html
+      - name: Build debug APK
+        run: gradle -p android :app:assembleDebug --no-daemon
+      - name: Verify embedded game and signing
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          unzip -p "$APK" assets/index.html | cmp - index.html
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | head -n 4
+          cp "$APK" Fuga.apk
+          sha256sum Fuga.apk > Fuga.apk.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fuga-APK
+          path: |
+            Fuga.apk
+            Fuga.apk.sha256
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view apk-teste-1 >/dev/null 2>&1; then
+            gh release upload apk-teste-1 Fuga.apk Fuga.apk.sha256 --clobber
+          else
+            gh release create apk-teste-1 Fuga.apk Fuga.apk.sha256 --title "Fuga - APK de teste" --notes "Versão de teste offline."
+          fi
