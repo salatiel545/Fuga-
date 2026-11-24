@@ -1,7 +1,7 @@
 name: Build offline APK
 on:
   push:
-    branches: [main]
+    branches: [icone-fuga]
   workflow_dispatch:
 permissions:
   contents: write
@@ -44,8 +44,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view apk-teste-1 >/dev/null 2>&1; then
-            gh release upload apk-teste-1 Fuga.apk Fuga.apk.sha256 --clobber
+          if gh release view apk-icone-1 >/dev/null 2>&1; then
+            gh release upload apk-icone-1 Fuga.apk Fuga.apk.sha256 --clobber
           else
-            gh release create apk-teste-1 Fuga.apk Fuga.apk.sha256 --title "Fuga - APK de teste" --notes "Versão de teste offline."
+            gh release create apk-icone-1 Fuga.apk Fuga.apk.sha256 --title "Fuga - APK com ícone" --notes "Versão de teste offline."
           fi
