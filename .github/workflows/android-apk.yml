@@ -1,13 +1,13 @@
-name: Build phase 1 graphics test 2 APK
+name: Build phase 1 PSX test APK
 on:
   push:
-    branches: [fase1-graficos-teste-2]
+    branches: [fase1-psx-teste]
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   build:
-    if: github.ref == 'refs/heads/fase1-graficos-teste-2'
+    if: github.ref == 'refs/heads/fase1-psx-teste'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
       - name: Include exact graphics test game
         run: |
           set -euo pipefail
-          echo 'dc0e2d061e0f342260509958792d6476d146628bdf4d98adc4487217bfa7a22f  index.html' | sha256sum -c -
+          echo '7556d57c66fe6bac84e597792e8e10ef916a592fd959bf2e0285b77e18e28342  index.html' | sha256sum -c -
           grep -Fx '    namespace "br.com.biel.fuga"' android/app/build.gradle
           git fetch --depth=1 origin icone-fuga
           git diff --exit-code FETCH_HEAD -- android/app/src/main/res
@@ -39,8 +39,8 @@ jobs:
           BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           "$BUILD_TOOLS/aapt" dump badging "$APK" | tee /tmp/fuga-badging.txt
-          grep -F "package: name='br.com.biel.fuga.graficosteste2'" /tmp/fuga-badging.txt
-          grep -F "application-label:'Fuga Teste 2'" /tmp/fuga-badging.txt
+          grep -F "package: name='br.com.biel.fuga.psxteste'" /tmp/fuga-badging.txt
+          grep -F "application-label:'Fuga PSX Teste'" /tmp/fuga-badging.txt
           grep -E '^application-icon-[0-9]+:' /tmp/fuga-badging.txt
           if grep -F 'android.permission.INTERNET' /tmp/fuga-badging.txt; then
             echo 'Unexpected INTERNET permission' >&2
@@ -52,17 +52,17 @@ jobs:
             echo 'Unexpected INTERNET permission' >&2
             exit 1
           fi
-          cp "$APK" Fuga-graficos-teste-2.apk
-          sha256sum Fuga-graficos-teste-2.apk > Fuga-graficos-teste-2.apk.sha256
+          cp "$APK" Fuga-PSX-teste.apk
+          sha256sum Fuga-PSX-teste.apk > Fuga-PSX-teste.apk.sha256
       - uses: actions/upload-artifact@v4
         with:
-          name: Fuga-graficos-teste-2-APK
+          name: Fuga-PSX-teste-APK
           path: |
-            Fuga-graficos-teste-2.apk
-            Fuga-graficos-teste-2.apk.sha256
+            Fuga-PSX-teste.apk
+            Fuga-PSX-teste.apk.sha256
       - name: Publish separate prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create apk-graficos-teste-2 Fuga-graficos-teste-2.apk --target fase1-graficos-teste-2 --title 'Fuga - teste 2 de gráficos da fase 1' --notes 'Teste paralelo dos gráficos da fase 1. A versão aprovada permanece separada.' --prerelease
+          gh release create apk-psx-teste Fuga-PSX-teste.apk --target fase1-psx-teste --title 'Fuga - teste PSX da fase 1' --notes 'Teste visual PSX paralelo da fase 1, com recursos próprios. A versão anterior permanece separada.' --prerelease

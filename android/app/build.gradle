@@ -4,7 +4,7 @@ android {
     namespace "br.com.biel.fuga"
     compileSdk 35
     defaultConfig {
-        applicationId "br.com.biel.fuga.graficosteste2"
+        applicationId "br.com.biel.fuga.psxteste"
         minSdk 23
         targetSdk 34
         versionCode 1
