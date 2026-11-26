@@ -1,7 +1,7 @@
-name: Build offline APK
+name: Build phase 1 graphics test APK
 on:
   push:
-    branches: [icone-fuga]
+    branches: [fase1-graficos-teste]
   workflow_dispatch:
 permissions:
   contents: write
@@ -17,35 +17,51 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.9
-      - name: Include exact original game
+      - name: Include exact graphics test game
         run: |
+          set -euo pipefail
+          echo '08f87073820b0df63c1a8610d56e0f646dfd973212062251944ee19b3a8a8090  index.html' | sha256sum -c -
+          grep -Fx '    namespace "br.com.biel.fuga"' android/app/build.gradle
+          git fetch --depth=1 origin icone-fuga
+          git diff --exit-code FETCH_HEAD -- android/app/src/main/res
           mkdir -p android/app/src/main/assets
           cp index.html android/app/src/main/assets/index.html
       - name: Build debug APK
         run: gradle -p android :app:assembleDebug --no-daemon
-      - name: Verify embedded game and signing
+      - name: Verify embedded game, signing and app identity
         run: |
           set -euo pipefail
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           unzip -p "$APK" assets/index.html | cmp - index.html
+          printf 'Embedded game SHA-256: '
+          unzip -p "$APK" assets/index.html | sha256sum
           BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
-          "$BUILD_TOOLS/aapt" dump badging "$APK" | head -n 4
-          cp "$APK" Fuga.apk
-          sha256sum Fuga.apk > Fuga.apk.sha256
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | tee /tmp/fuga-badging.txt
+          grep -F "package: name='br.com.biel.fuga.graficosteste'" /tmp/fuga-badging.txt
+          grep -F "application-label:'Fuga Teste'" /tmp/fuga-badging.txt
+          grep -E '^application-icon-[0-9]+:' /tmp/fuga-badging.txt
+          if grep -F 'android.permission.INTERNET' /tmp/fuga-badging.txt; then
+            echo 'Unexpected INTERNET permission' >&2
+            exit 1
+          fi
+          "$BUILD_TOOLS/aapt" dump xmltree "$APK" AndroidManifest.xml | tee /tmp/fuga-manifest.txt
+          grep -F 'br.com.biel.fuga.MainActivity' /tmp/fuga-manifest.txt
+          if grep -F 'android.permission.INTERNET' /tmp/fuga-manifest.txt; then
+            echo 'Unexpected INTERNET permission' >&2
+            exit 1
+          fi
+          cp "$APK" Fuga-graficos-teste.apk
+          sha256sum Fuga-graficos-teste.apk > Fuga-graficos-teste.apk.sha256
       - uses: actions/upload-artifact@v4
         with:
-          name: Fuga-APK
+          name: Fuga-graficos-teste-APK
           path: |
-            Fuga.apk
-            Fuga.apk.sha256
-      - name: Publish release
+            Fuga-graficos-teste.apk
+            Fuga-graficos-teste.apk.sha256
+      - name: Publish separate prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view apk-icone-1 >/dev/null 2>&1; then
-            gh release upload apk-icone-1 Fuga.apk Fuga.apk.sha256 --clobber
-          else
-            gh release create apk-icone-1 Fuga.apk Fuga.apk.sha256 --title "Fuga - APK com ícone" --notes "Versão de teste offline."
-          fi
+          gh release create apk-graficos-teste-1 Fuga-graficos-teste.apk Fuga-graficos-teste.apk.sha256 --target fase1-graficos-teste --title 'Fuga - teste de gráficos da fase 1' --notes 'Teste paralelo dos gráficos da fase 1. A versão aprovada permanece separada.' --prerelease
